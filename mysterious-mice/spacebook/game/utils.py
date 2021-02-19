@@ -24,9 +24,15 @@ def new_game(request):
             wind_speed = sol_weather_data["HWS"]["av"]
             temperature = sol_weather_data["AT"]["av"]
             break
-    if wind_speed is None or wind_speed == "":
+    try:
+        if wind_speed is None or wind_speed == "":
+            wind_speed = 6
+    except UnboundLocalError:
         wind_speed = 6
-    if temperature is None or temperature == "":
+    try:
+        if temperature is None or temperature == "":
+            temperature = -60
+    except UnboundLocalError:
         temperature = -60
 
     # Get wind direction
@@ -116,8 +122,14 @@ def new_game(request):
                 "from_rover": False,
                 "message": 'Type "help" at any time to review the controls.',
             },
-            {"from_rover": False, "message": "Good luck!", },
-            {"from_rover": False, "message": "", },
+            {
+                "from_rover": False,
+                "message": "Good luck!",
+            },
+            {
+                "from_rover": False,
+                "message": "",
+            },
         ],
         "ground_descriptions": [
             "Red sand coveres the ground",
@@ -188,16 +200,31 @@ def command_help(game_data):
             "from_rover": False,
             "message": "You can also move through text commands. Examples of valid commands:",
         },
-        {"from_rover": False, "message": ">> move n", },
-        {"from_rover": False, "message": ">> move north", },
+        {
+            "from_rover": False,
+            "message": ">> move n",
+        },
+        {
+            "from_rover": False,
+            "message": ">> move north",
+        },
         {"from_rover": False, "message": ""},
         {
             "from_rover": False,
             "message": "Look around for hints of where the components might be. Examples of valid commands:",
         },
-        {"from_rover": False, "message": ">> look n", },
-        {"from_rover": False, "message": ">> look north", },
-        {"from_rover": False, "message": ">> look down", },
+        {
+            "from_rover": False,
+            "message": ">> look n",
+        },
+        {
+            "from_rover": False,
+            "message": ">> look north",
+        },
+        {
+            "from_rover": False,
+            "message": ">> look down",
+        },
         {"from_rover": False, "message": ""},
         {
             "from_rover": False,
@@ -257,7 +284,10 @@ def command_move(game_data, direction):
                     if random.randint(1, 10) > 5:
                         game_data["is_stuck"] = True
                         game_data["messages"].append(
-                            {"from_rover": False, "message": "You are stuck!", }
+                            {
+                                "from_rover": False,
+                                "message": "You are stuck!",
+                            }
                         )
 
                 # If you are stuck there is a chance to become unstuck
@@ -272,7 +302,10 @@ def command_move(game_data, direction):
                         )
                     else:
                         game_data["messages"].append(
-                            {"from_rover": False, "message": "You are stuck!", }
+                            {
+                                "from_rover": False,
+                                "message": "You are stuck!",
+                            }
                         )
 
     # Attempt to move the rover
@@ -292,7 +325,10 @@ def command_move(game_data, direction):
             new_position = old_position
             success = False
             game_data["messages"].append(
-                {"from_rover": False, "message": "You cannot move there.", }
+                {
+                    "from_rover": False,
+                    "message": "You cannot move there.",
+                }
             )
     else:
         success = False
@@ -307,10 +343,11 @@ def command_move(game_data, direction):
     if success:
 
         # Move dust storm
-        cur_dust = game_data['obstacles']['dust_storm']
-        cur_dust[0] += game_data['wind'][0]
-        cur_dust[1] += game_data['wind'][1]
-        game_data['obstacles'].update({"dust_storm": cur_dust})
+        cur_dust = game_data["obstacles"]["dust_storm"]
+        new_dust_x = cur_dust[0] + game_data["wind"][0]
+        new_dust_y = cur_dust[1] + game_data["wind"][1]
+        new_dust = (new_dust_x, new_dust_y)
+        game_data["obstacles"].update({"dust_storm": new_dust})
         # deplete battery
         game_data["battery"] = game_data["battery"] - game_data["power_usage"]
         if game_data["has_solar_panels"]:
@@ -336,7 +373,10 @@ def command_move(game_data, direction):
             game_data["plutonium"] = new_position
 
         # Pick up components
-        if on_object(new_position, game_data["solar_panels"]) and not game_data["has_solar_panels"]:
+        if (
+            on_object(new_position, game_data["solar_panels"])
+            and not game_data["has_solar_panels"]
+        ):
             game_data["has_solar_panels"] = True
             game_data["messages"].append(
                 {
@@ -350,14 +390,23 @@ def command_move(game_data, direction):
                     "message": "It will take less energy to traverse the terrain of Mars now!",
                 }
             )
-        if on_object(new_position, game_data["plutonium"]) and not game_data["has_plutonium"]:
+        if (
+            on_object(new_position, game_data["plutonium"])
+            and not game_data["has_plutonium"]
+        ):
             game_data["has_plutonium"] = True
             game_data["messages"].append(
-                {"from_rover": False, "message": "You have retrieved the plutonium!"}
+                {
+                    "from_rover": False,
+                    "message": "You have retrieved the plutonium!",
+                }
             )
 
         game_data["messages"].append(
-            {"from_rover": False, "message": f"Your new location is {new_position}"}
+            {
+                "from_rover": False,
+                "message": f"Your new location is {new_position}",
+            }
         )
         game_data["rover"] = new_position
     return game_data
@@ -427,7 +476,10 @@ def command_look(game_data, direction):
                         ],
                     }
                 )
-                if (game_data["item_msg_selector"] == len(game_data["item_messages"]["plutonium"]) - 1):
+                if (
+                    game_data["item_msg_selector"]
+                    == len(game_data["item_messages"]["plutonium"]) - 1
+                ):
                     if not game_data["found"][item]:
                         game_data["score"] += 50
                         game_data["found"][item] = True
@@ -443,12 +495,17 @@ def command_look(game_data, direction):
 
     # give more detailed description for ground
     if direction in ["d", "down"] or "ground" in direction:
-        message = game_data["ground_descriptions"][game_data["ground_desc_selector"]]
+        message = game_data["ground_descriptions"][
+            game_data["ground_desc_selector"]
+        ]
         new_message.append({"from_rover": False, "message": message})
 
         if not game_data["found"]["better_path"]:
             # if the last option is chosen the battery is increased
-            if (game_data["ground_desc_selector"] == len(game_data["ground_descriptions"]) - 1):
+            if (
+                game_data["ground_desc_selector"]
+                == len(game_data["ground_descriptions"]) - 1
+            ):
                 game_data["battery"] += 3
                 game_data["found"]["better_path"] = True
 
@@ -485,7 +542,9 @@ def calculate_score(game_data):
     """
     Score is equal to remaining battery times (mars temperature divided by 10) plus accumulated score.
     """
-    bat_score = int(game_data["battery"] * (abs(game_data["temperature"]) // 10))
+    bat_score = int(
+        game_data["battery"] * (abs(game_data["temperature"]) // 10)
+    )
     return game_data["score"] + bat_score
 
 
@@ -512,7 +571,10 @@ def parse_command(request, game_data, command):
             game_data = command_help(game_data)
         else:
             game_data["messages"].append(
-                {"from_rover": False, "message": f"Command not understood: {command}"}
+                {
+                    "from_rover": False,
+                    "message": f"Command not understood: {command}",
+                }
             )
     if command == "newgame":
         game_data = new_game(request)
@@ -535,10 +597,16 @@ def parse_command(request, game_data, command):
         )
 
     # Lose if battery reaches 0, unless plutonium was found this move
-    if (game_data["battery"] <= 0 and not game_data["game_over"] and not game_data["victorious"]):
+    if (
+        game_data["battery"] <= 0
+        and not game_data["game_over"]
+        and not game_data["victorious"]
+    ):
         game_data["battery"] = 0
         game_data["messages"].append({"from_rover": False, "message": ""})
-        game_data["messages"].append({"from_rover": False, "message": "GAME OVER!"})
+        game_data["messages"].append(
+            {"from_rover": False, "message": "GAME OVER!"}
+        )
         game_data["game_over"] = True
 
     # Direct player to start new game and save score
@@ -550,11 +618,16 @@ def parse_command(request, game_data, command):
             # When getting the score the input field will be limited to 3 characters
             if game_data["getting_score"]:
                 game_data["initials"] = command
-                HighScore.objects.create(score=game_data["score"], initials=command)
+                HighScore.objects.create(
+                    score=game_data["score"], initials=command
+                )
                 game_data["input_len"] = 16
                 game_data["getting_score"] = False
                 game_data["messages"].append(
-                    {"from_rover": False, "message": "Your score has been recorded."}
+                    {
+                        "from_rover": False,
+                        "message": "Your score has been recorded.",
+                    }
                 )
                 game_data["messages"].append(
                     {
@@ -589,7 +662,10 @@ def parse_command(request, game_data, command):
                 )
         else:
             game_data["messages"].append(
-                {"from_rover": False, "message": 'Type "new game" to start a new game.'}
+                {
+                    "from_rover": False,
+                    "message": 'Type "new game" to start a new game.',
+                }
             )
 
     request.session["game_data"] = game_data
